@@ -21,5 +21,6 @@ fn main() {
     let mut rt = Runtime::new();
     rt.spawn(Box::pin(my_future));
 
-    rt.start();
+    rt.run();
+    loop {}
 }

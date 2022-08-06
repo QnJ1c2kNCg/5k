@@ -2,7 +2,7 @@ use std::{
     future::Future,
     sync::{
         atomic::{AtomicBool, Ordering},
-        Arc,
+        Arc, Mutex,
     },
     task::{Poll, Waker},
     thread::{self, sleep},
@@ -10,18 +10,34 @@ use std::{
 };
 
 pub struct Timer {
-    is_completed: Arc<AtomicBool>,
-    duration: Duration,
+    state: Arc<Mutex<TimerState>>,
+}
+
+struct TimerState {
+    is_completed: bool,
     waker: Option<Waker>,
 }
 
 impl Timer {
     pub fn new(duration: Duration) -> Self {
-        Self {
-            is_completed: Arc::new(AtomicBool::new(false)),
-            duration,
+        let state = Arc::new(Mutex::new(TimerState {
+            is_completed: false,
             waker: None,
+        }));
+        {
+            let state = Arc::clone(&state);
+
+            thread::spawn(move || {
+                sleep(duration);
+                let mut state = state.lock().expect("lock poisoned");
+                state.is_completed = true;
+                if let Some(waker) = state.waker.take() {
+                    waker.wake();
+                }
+            });
         }
+
+        Self { state }
     }
 }
 
@@ -32,19 +48,11 @@ impl Future for Timer {
         self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Self::Output> {
-        if self.is_completed.load(Ordering::Relaxed) {
+        let mut state = self.state.lock().expect("lock poisoned");
+        if state.is_completed {
             Poll::Ready(())
         } else {
-            {
-                let waker = cx.waker().clone();
-                let is_completed = Arc::clone(&self.is_completed);
-                let duration = self.duration;
-                thread::spawn(move || {
-                    sleep(duration);
-                    is_completed.store(true, Ordering::Relaxed);
-                    waker.wake();
-                });
-            }
+            state.waker = Some(cx.waker().clone());
             Poll::Pending
         }
     }
