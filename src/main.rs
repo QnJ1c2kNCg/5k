@@ -13,7 +13,7 @@ fn main() {
     io::stdout().flush().unwrap();
 
     let my_future = async {
-        let timer = Timer::new(Duration::from_secs(5));
+        let timer = Timer::new(Duration::from_secs(4));
         timer.await;
         println!("world");
     };

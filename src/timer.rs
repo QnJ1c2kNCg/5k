@@ -1,9 +1,6 @@
 use std::{
     future::Future,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc, Mutex,
-    },
+    sync::{Arc, Mutex},
     task::{Poll, Waker},
     thread::{self, sleep},
     time::Duration,
