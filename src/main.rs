@@ -19,7 +19,7 @@ fn main() {
     };
 
     let mut rt = Runtime::new();
-    rt.spawn(Box::pin(my_future));
+    rt.spawn(my_future);
 
     rt.run();
     loop {}
