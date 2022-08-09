@@ -75,10 +75,10 @@ impl Runtime {
         }
     }
 
-    pub fn spawn(&mut self, f: Pin<Box<dyn Future<Output = ()>>>) {
+    pub fn spawn(&mut self, f: impl Future<Output = ()> + 'static) {
         // create task
         let task = Arc::new(Task {
-            future: Mutex::new(f),
+            future: Mutex::new(Box::pin(f)),
             sender: self.sender.clone(),
         });
 
