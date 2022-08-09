@@ -93,4 +93,14 @@ impl Runtime {
             task.poll();
         }
     }
+
+    pub fn block_on(&self, f: impl Future<Output = ()> + 'static) {
+        // create task
+        let task = Arc::new(Task {
+            future: Mutex::new(Box::pin(f)),
+            sender: self.sender.clone(),
+        });
+
+        task.poll()
+    }
 }

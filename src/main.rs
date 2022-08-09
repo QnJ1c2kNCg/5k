@@ -5,6 +5,7 @@ use std::{
 
 use crate::{runtime::Runtime, timer::Timer};
 
+pub mod pending;
 mod runtime;
 mod timer;
 
@@ -22,5 +23,5 @@ fn main() {
     rt.spawn(my_future);
 
     rt.run();
-    loop {}
+    rt.block_on(async { pending::Pending::default().await })
 }
