@@ -5,3 +5,14 @@ version = 3
 [[package]]
 name = "five-k"
 version = "0.1.0"
+
+[[package]]
+name = "five-k-examples"
+version = "0.1.0"
+dependencies = [
+ "five-k",
+]
+
+[[package]]
+name = "five-k-macros"
+version = "0.1.0"

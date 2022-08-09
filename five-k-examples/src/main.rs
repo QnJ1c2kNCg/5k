@@ -3,11 +3,7 @@ use std::{
     time::Duration,
 };
 
-use crate::{runtime::Runtime, timer::Timer};
-
-pub mod pending;
-mod runtime;
-mod timer;
+use five_k::{runtime::Runtime, timer::Timer};
 
 fn main() {
     print!("Hello, ");
@@ -23,5 +19,5 @@ fn main() {
     rt.spawn(my_future);
 
     rt.run();
-    rt.block_on(async { pending::Pending::default().await })
+    rt.block_on(async { five_k::pending::Pending::default().await })
 }
