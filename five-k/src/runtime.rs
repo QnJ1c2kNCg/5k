@@ -3,6 +3,7 @@ use std::{
     pin::Pin,
     sync::{mpsc, Arc, Mutex},
     task::{Context, RawWaker, RawWakerVTable, Waker},
+    thread::{self},
 };
 
 // brunoroy: why did they use a vtable instead of just a trait?
@@ -16,6 +17,8 @@ unsafe fn wake(data_ptr: *const ()) {
     vtable_data
         .task
         .sender
+        .lock()
+        .unwrap()
         .send(Arc::clone(&vtable_data.task))
         .expect("we know the receiver hasn't been dropped");
 }
@@ -36,13 +39,13 @@ struct VTableData {
 }
 
 pub struct Runtime {
-    scheduled_tasks: mpsc::Receiver<Arc<Task>>,
     sender: mpsc::Sender<Arc<Task>>,
 }
 
 struct Task {
-    future: Mutex<Pin<Box<dyn Future<Output = ()>>>>,
-    sender: mpsc::Sender<Arc<Task>>,
+    future: Mutex<Pin<Box<dyn Future<Output = ()> + Send>>>,
+    // i don't think this needs the mutex, but we want Task to be sync for now
+    sender: Mutex<mpsc::Sender<Arc<Task>>>,
 }
 
 impl Task {
@@ -67,19 +70,23 @@ impl Task {
 
 impl Runtime {
     pub fn new() -> Self {
-        let (send, recv) = mpsc::channel();
+        let (sender, recv) = mpsc::channel::<Arc<Task>>();
 
-        Self {
-            scheduled_tasks: recv,
-            sender: send,
-        }
+        // TODO: store join handle for cleanup
+        thread::spawn(move || {
+            while let Ok(task) = recv.recv() {
+                task.poll();
+            }
+        });
+
+        Self { sender }
     }
 
-    pub fn spawn(&mut self, f: impl Future<Output = ()> + 'static) {
+    pub fn spawn(&mut self, f: impl Future<Output = ()> + 'static + Send) {
         // create task
         let task = Arc::new(Task {
             future: Mutex::new(Box::pin(f)),
-            sender: self.sender.clone(),
+            sender: Mutex::new(self.sender.clone()),
         });
 
         // schedule the task
@@ -88,19 +95,18 @@ impl Runtime {
             .expect("we know the receiver hasn't been dropped");
     }
 
-    pub fn run(&mut self) {
-        while let Ok(task) = self.scheduled_tasks.recv() {
-            task.poll();
-        }
-    }
-
-    pub fn block_on(&self, f: impl Future<Output = ()> + 'static) {
+    pub fn block_on(&self, f: impl Future<Output = ()> + 'static + Send) {
+        let (sender, recv) = mpsc::channel::<Arc<Task>>();
         // create task
         let task = Arc::new(Task {
             future: Mutex::new(Box::pin(f)),
-            sender: self.sender.clone(),
+            sender: Mutex::new(sender),
         });
 
-        task.poll()
+        task.poll();
+
+        while let Ok(task) = recv.recv() {
+            task.poll();
+        }
     }
 }

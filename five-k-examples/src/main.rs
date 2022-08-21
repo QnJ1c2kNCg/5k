@@ -6,6 +6,11 @@ use std::{
 use five_k::{runtime::Runtime, timer::Timer};
 
 fn main() {
+    let rt = Runtime::new();
+    rt.block_on(inner_main());
+}
+
+async fn inner_main() {
     print!("Hello, ");
     io::stdout().flush().unwrap();
 
@@ -15,9 +20,7 @@ fn main() {
         println!("world");
     };
 
-    let mut rt = Runtime::new();
-    rt.spawn(my_future);
+    my_future.await;
 
-    rt.run();
-    rt.block_on(async { five_k::pending::Pending::default().await })
+    five_k::pending::Pending::default().await
 }
