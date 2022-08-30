@@ -19,6 +19,4 @@ fn main() {
         let value = rx.await;
         println!("Received the value: {:?}", value);
     });
-
-    loop {}
 }
