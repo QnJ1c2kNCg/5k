@@ -7,3 +7,11 @@ edition = "2021"
 
 [dependencies]
 five-k = { version = "*", path = "../five-k"}
+
+[[example]]
+name = "main"
+path = "main.rs"
+
+[[example]]
+name = "oneshot"
+path = "oneshot.rs"
