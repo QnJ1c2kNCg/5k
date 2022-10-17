@@ -6,6 +6,8 @@ use std::{
     thread::{self},
 };
 
+use crate::worker::Worker;
+
 // brunoroy: why did they use a vtable instead of just a trait?
 
 unsafe fn clone(data_ptr: *const ()) -> RawWaker {
@@ -42,14 +44,15 @@ pub struct Runtime {
     sender: mpsc::Sender<Arc<Task>>,
 }
 
-struct Task {
+pub struct Task {
     future: Mutex<Pin<Box<dyn Future<Output = ()> + Send>>>,
     // i don't think this needs the mutex, but we want Task to be sync for now
     sender: Mutex<mpsc::Sender<Arc<Task>>>,
 }
 
 impl Task {
-    fn poll(self: Arc<Self>) {
+    // brunoroy: do i need this arc here?
+    pub fn poll(self: Arc<Self>) {
         let vtable_data = Box::new(VTableData {
             task: Arc::clone(&self),
         });
@@ -74,8 +77,10 @@ impl Runtime {
 
         // TODO: store join handle for cleanup
         thread::spawn(move || {
+            let worker = Worker::new();
             while let Ok(task) = recv.recv() {
-                task.poll();
+                // task.poll();
+                worker.submit(task)
             }
         });
 
